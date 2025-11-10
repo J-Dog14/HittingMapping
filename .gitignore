@@ -1,7 +1,23 @@
-.Rproj.user
+# R files
 .Rhistory
 .RData
 .Ruserdata
-.httr-oauth
+*.Rproj.user
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Data files (you may want to track these, but typically excluded)
+# *.xml
+# session.xml
+# session_data.xml
+
+# OS files
 .DS_Store
-.quarto
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
