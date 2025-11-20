@@ -313,7 +313,7 @@ build_all_hitting <- function(root = getwd(), filter_regex = NULL) {
   files <- if (!is.null(filter_regex)) {
     kept <- all_xmls[str_detect(all_xmls, regex(filter_regex, ignore_case = TRUE))]
     if (!length(kept)) {
-      message("⚠️ Filter kept 0 files. Falling back to ALL XMLs.")
+      message("Filter kept 0 files. Falling back to ALL XMLs.")
       all_xmls
     } else kept
   } else all_xmls
