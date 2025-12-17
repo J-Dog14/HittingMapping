@@ -560,8 +560,11 @@ process_all_files <- function() {
       # Extract base name from owner (already extracted above)
       owner_no_ext <- tools::file_path_sans_ext(owner_base)
       
-      # STRICT MATCHING: Only match based on directory location
-      # Owner names are NOT unique across directories, so we MUST match by directory only
+      # MATCHING LOGIC (based on working pitching_processing.R):
+      # 1. Check if directory already mapped (from previous owner in same file)
+      # 2. Find session.xml in same directory and look it up in athlete_list
+      # 3. Try parent directory if not found
+      # 4. Skip if no match (no fallback to avoid incorrect grouping)
       
       matched_athlete <- NULL
       
@@ -573,14 +576,41 @@ process_all_files <- function() {
         # 2. Look for session.xml in the EXACT same directory as session_data.xml
         session_xml_path <- file.path(dir_path, "session.xml")
         if (file.exists(session_xml_path)) {
-          athlete_info <- extract_athlete_info(session_xml_path)
-          if (!is.null(athlete_info) && nrow(athlete_info) > 0) {
-            matched_athlete <- athlete_info
-            # Add to mapping for future owners in this directory
-            owner_mapping[[dir_path_normalized]] <- athlete_info
-            athlete_list[[length(athlete_list) + 1]] <- athlete_info
-            
-            # Also extract velocity data from this session.xml
+          # Look up this session.xml in athlete_list (from Phase 1) by matching normalized paths
+          session_xml_normalized <- normalizePath(session_xml_path, winslash = "/", mustWork = FALSE)
+          found_athlete <- NULL
+          
+          for (athlete_info in athlete_list) {
+            if (nrow(athlete_info) > 0 && "source_path" %in% names(athlete_info)) {
+              athlete_path_normalized <- normalizePath(athlete_info$source_path[1], winslash = "/", mustWork = FALSE)
+              if (athlete_path_normalized == session_xml_normalized) {
+                found_athlete <- athlete_info
+                break
+              }
+            }
+          }
+          
+          if (!is.null(found_athlete) && nrow(found_athlete) > 0) {
+            matched_athlete <- found_athlete
+            # Cache this mapping for future owners in same directory
+            owner_mapping[[dir_path_normalized]] <- found_athlete
+            cat("    Matched owner", owner_name, "via session.xml in same directory\n")
+            cat("      Athlete:", found_athlete$name[1], "\n")
+          } else {
+            # Not found in athlete_list, try extracting dynamically
+            athlete_info <- extract_athlete_info(session_xml_path)
+            if (!is.null(athlete_info) && nrow(athlete_info) > 0) {
+              matched_athlete <- athlete_info
+              # Add to mapping and athlete_list
+              owner_mapping[[dir_path_normalized]] <- athlete_info
+              athlete_list[[length(athlete_list) + 1]] <- athlete_info
+              cat("    Dynamically found and matched session.xml in same directory\n")
+              cat("      Athlete:", athlete_info$name[1], "\n")
+            }
+          }
+          
+          # Extract velocity data from this session.xml (whether found in list or extracted)
+          if (!is.null(matched_athlete)) {
             doc_athlete <- tryCatch(read_xml_robust(session_xml_path), error = function(e) NULL)
             if (!is.null(doc_athlete)) {
               root_athlete <- xml_root(doc_athlete)
@@ -606,8 +636,31 @@ process_all_files <- function() {
                 }
               }
             }
+          }
+        } else {
+          # 3. Try parent directory
+          parent_dir <- dirname(dir_path)
+          session_xml_path <- file.path(parent_dir, "session.xml")
+          if (file.exists(session_xml_path)) {
+            session_xml_normalized <- normalizePath(session_xml_path, winslash = "/", mustWork = FALSE)
+            found_athlete <- NULL
             
-            cat("    Found and matched session.xml in same directory:", basename(dir_path), "\n")
+            for (athlete_info in athlete_list) {
+              if (nrow(athlete_info) > 0 && "source_path" %in% names(athlete_info)) {
+                athlete_path_normalized <- normalizePath(athlete_info$source_path[1], winslash = "/", mustWork = FALSE)
+                if (athlete_path_normalized == session_xml_normalized) {
+                  found_athlete <- athlete_info
+                  break
+                }
+              }
+            }
+            
+            if (!is.null(found_athlete) && nrow(found_athlete) > 0) {
+              matched_athlete <- found_athlete
+              owner_mapping[[dir_path_normalized]] <- found_athlete
+              cat("    Matched owner", owner_name, "via session.xml in parent directory\n")
+              cat("      Athlete:", found_athlete$name[1], "\n")
+            }
           }
         }
       }
@@ -616,7 +669,7 @@ process_all_files <- function() {
       if (is.null(matched_athlete)) {
         cat("  WARNING: Could not match owner", owner_name, "to any athlete\n")
         cat("    Directory:", dir_path_normalized, "\n")
-        cat("    No session.xml found in this directory - SKIPPING\n")
+        cat("    No session.xml found in this directory or parent - SKIPPING\n")
         next
       }
       
