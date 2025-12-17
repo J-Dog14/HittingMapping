@@ -1,24 +1,56 @@
-# R files
-.Rhistory
-.RData
-.Ruserdata
-*.Rproj.user
-
 # Database files
 *.db
 *.sqlite
 *.sqlite3
+*.db.backup*
 
-# Data files (you may want to track these, but typically excluded)
-# *.xml
-# session.xml
-# session_data.xml
+# CSV files
+*.csv
+
+# XML files
+*.xml
+*.xml.gz
+
+# Data files
+*.c3d
+*.c3d.gz
+
+# Backup files
+*.backup
+*.bak
+*~
 
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# R files
+.Rhistory
+.RData
+.Ruserdata
+
+# Python files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Log files
+*.log
 
 # Temporary files
 *.tmp
-*.log
-.Rproj.user
+*.temp
